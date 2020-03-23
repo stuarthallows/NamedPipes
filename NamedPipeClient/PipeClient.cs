@@ -1,113 +1,66 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO.Pipes;
-using System.Security.Principal;
 using System.Threading;
 using NamedPipeShared;
 
 namespace NamedPipeClient
 {
     /// <summary>
-    /// The following example shows the client process, which uses the NamedPipeClientStream class. The client connects to the server process and sends a file name to the server.
-    /// The example uses impersonation, so the identity that is running the client application must have permission to access the file. The server then sends the contents of
-    /// the file back to the client. The file contents are then displayed to the console.
+    /// 1. Open up the client side of a named pipe connection.
+    /// 2. Send a number of strings to the server (each representing a tag).
+    /// 3. Send an empty string to indicate data is complete.
     /// </summary>
     public class PipeClient
     {
-        private static int numClients = 4;
-
-        public static void Main(string[] args)
+        public static void Main()
         {
-            if (args.Length == 0)
+            Console.WriteLine("*** Named Pipes Client ***");
+            Console.WriteLine("Connecting to server...\n");
+
+            var pipeClient = new NamedPipeClientStream(".", "tagpipe", PipeDirection.Out);
+            pipeClient.Connect();
+
+            var ss = new StreamString(pipeClient);
+            
+            for (var n = 0; n < 10; n++)
             {
-                Console.WriteLine("\n*** Named pipe client stream with impersonation example ***\n");
-             
-                StartClients();
-                return;
+                var tagId = RandomTagId();
+
+                ss.WriteString(tagId);
+                Console.WriteLine($"Sent tag {tagId}");
+
+                Thread.Sleep(1000);
             }
 
-            if (args[0] == "spawnclient")
-            {
-                var pipeClient = new NamedPipeClientStream(".", "testpipe", PipeDirection.InOut, PipeOptions.None, TokenImpersonationLevel.Impersonation);
+            // Indicates to the server that the client has no more data to send.
+            ss.WriteString(string.Empty);
 
-                Console.WriteLine("Connecting to server...\n");
-                pipeClient.Connect();
+            pipeClient.Close();
 
-                var ss = new StreamString(pipeClient);
-                
-                // Validate the server's signature string.
-                if (ss.ReadString() == "I am the one true server!")
-                {
-                    // The client security token is sent with the first write. Send the name of the file whose contents are returned by the server.
-                    ss.WriteString("D:\\textfile.txt");
-
-                    // Print the file to the screen.
-                    Console.Write(ss.ReadString());
-                }
-                else
-                {
-                    Console.WriteLine("Server could not be verified.");
-                }
-
-                pipeClient.Close();
-
-                // Give the client process some time to display results before exiting.
-                Thread.Sleep(4000);
-            }
+            // Keep the console open for a while.
+            Thread.Sleep(2000);
         }
 
-        // Helper function to create pipe client processes
-        private static void StartClients()
+        private static readonly Random Random = new Random();
+
+        private static string RandomTagId()
         {
-            Console.WriteLine("Spawning client processes...\n");
+            const string candidateChars = "0123456789ABCDEF";
 
-            string currentProcessName = GetCurrentProcessName();
-            var plist = new Process[numClients];
+            var randomChars = new char[24];
+            var prefix = "E2801160";
 
-            int i;
-            for (i = 0; i < numClients; i++)
+            for (var i = 0; i < prefix.Length; ++i)
             {
-                // Start 'this' program but spawn a named pipe client.
-                plist[i] = Process.Start(currentProcessName, "spawnclient");
+                randomChars[i] = prefix[i];
             }
 
-            while (i > 0)
+            for (var i = prefix.Length; i < randomChars.Length; i++)
             {
-                for (int j = 0; j < numClients; j++)
-                {
-                    if (plist[j] != null)
-                    {
-                        if (plist[j].HasExited)
-                        {
-                            Console.WriteLine($"Client process[{plist[j].Id}] has exited.");
-                            plist[j] = null;
-                            i--;    // decrement the process watch count
-                        }
-                        else
-                        {
-                            Thread.Sleep(250);
-                        }
-                    }
-                }
+                randomChars[i] = candidateChars[Random.Next(candidateChars.Length)];
             }
 
-            Console.WriteLine("\nClient processes finished, exiting.");
-        }
-
-        private static string GetCurrentProcessName()
-        {
-            string currentProcessName = Environment.CommandLine;
-
-            if (currentProcessName.Contains(Environment.CurrentDirectory))
-            {
-                currentProcessName = currentProcessName.Replace(Environment.CurrentDirectory, string.Empty);
-            }
-
-            // Remove extra characters when launched from Visual Studio
-            currentProcessName = currentProcessName.Replace("\\", string.Empty);
-            currentProcessName = currentProcessName.Replace("\"", string.Empty);
-
-            return currentProcessName;
+            return new string(randomChars);
         }
     }
 }
