@@ -15,9 +15,20 @@ namespace NamedPipeClient
         public static void Main()
         {
             Console.WriteLine("*** Named Pipes Client ***");
+
+            Console.WriteLine("Enter pipe name and press ENTER");
+
+            var pipeName = Console.ReadLine();
+
+            if (string.IsNullOrEmpty(pipeName))
+            {
+                Console.WriteLine("Using default pipe name of \"RfidTags\"");
+                pipeName = "RfidTags";
+            }
+
             Console.WriteLine("Connecting to server...\n");
 
-            var pipeClient = new NamedPipeClientStream(".", "tagpipe", PipeDirection.Out);
+            var pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.Out);
             pipeClient.Connect();
 
             var ss = new StreamString(pipeClient);

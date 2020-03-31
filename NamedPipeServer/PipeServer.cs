@@ -19,7 +19,7 @@ namespace NamedPipeServer
             Console.WriteLine("Waiting for client to connect...");
 
             // Server can only receive input with this pipe, it's not duplex.
-            var pipeServer = new NamedPipeServerStream("tagpipe", PipeDirection.In, 1);
+            var pipeServer = new NamedPipeServerStream("RfidTags", PipeDirection.In, 1);
 
             // Wait for a client to connect
             pipeServer.WaitForConnection();

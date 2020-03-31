@@ -7,7 +7,7 @@ namespace NamedPipeShared
     public class StreamString
     {
         private readonly Stream _ioStream;
-        private readonly UnicodeEncoding _streamEncoding = new UnicodeEncoding();
+        private readonly ASCIIEncoding _streamEncoding = new ASCIIEncoding();
 
         public StreamString(Stream ioStream)
         {
@@ -28,10 +28,12 @@ namespace NamedPipeShared
         {
             byte[] outBuffer = _streamEncoding.GetBytes(outString);
             int len = outBuffer.Length;
+            
             if (len > ushort.MaxValue)
             {
                 len = ushort.MaxValue;
             }
+
             _ioStream.WriteByte((byte)(len / 256));
             _ioStream.WriteByte((byte)(len & 255));
             _ioStream.Write(outBuffer, 0, len);
