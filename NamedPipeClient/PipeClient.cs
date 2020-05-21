@@ -15,15 +15,13 @@ namespace NamedPipeClient
         public static void Main()
         {
             Console.WriteLine("*** Named Pipes Client ***");
-
             Console.WriteLine("Enter pipe name and press ENTER");
 
             var pipeName = Console.ReadLine();
-
             if (string.IsNullOrEmpty(pipeName))
             {
-                Console.WriteLine("Using default pipe name of \"RfidTags\"");
-                pipeName = "RfidTags";
+                pipeName = "ChipID";
+                Console.WriteLine($"Using default pipe name of \"{pipeName}\"");
             }
 
             Console.WriteLine("Connecting to server...\n");

@@ -15,11 +15,20 @@ namespace NamedPipeServer
     {
         public static void Main()
         {
-            Console.WriteLine("*** Named Pipes Server ***");
+            Console.WriteLine("*** Named Pipe Server ***");
+            Console.WriteLine("Enter pipe name and press ENTER");
+
+            var pipeName = Console.ReadLine();
+            if (string.IsNullOrEmpty(pipeName))
+            {
+                pipeName = "ChipID";
+                Console.WriteLine($"Using default pipe name of \"{pipeName}\"");
+            }
+
             Console.WriteLine("Waiting for client to connect...");
 
             // Server can only receive input with this pipe, it's not duplex.
-            var pipeServer = new NamedPipeServerStream("RfidTags", PipeDirection.In, 1);
+            var pipeServer = new NamedPipeServerStream(pipeName, PipeDirection.In, 1);
 
             // Wait for a client to connect
             pipeServer.WaitForConnection();
@@ -32,7 +41,7 @@ namespace NamedPipeServer
 
                 while (true)
                 {
-                    string tagId = ss.ReadString();
+                    var tagId = ss.ReadString();
 
                     // Empty string received from client is the trigger to close the connection.
                     if (string.IsNullOrEmpty(tagId))
