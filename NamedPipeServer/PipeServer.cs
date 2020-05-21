@@ -7,84 +7,61 @@ using NamedPipeShared;
 namespace NamedPipeServer
 {
     /// <summary>
-    /// This example demonstrates how to create a named pipe by using the NamedPipeServerStream class. The server process creates four threads.
-    /// Each thread can accept a client connection. The connected client process then supplies the server with a file name.
-    /// If the client has sufficient permissions, the server process opens the file and sends its contents back to the client.
+    /// 1. Open the server side of a named pipe stream.
+    /// 2. Read a number of strings from the pipe.
+    /// 3. Close the connection when an empty string is received.
     /// </summary>
     public class PipeServer
     {
-        private const int NumThreads = 4;
-
         public static void Main()
         {
-            int i;
-            var servers = new Thread[NumThreads];
+            Console.WriteLine("*** Named Pipe Server ***");
+            Console.WriteLine("Enter pipe name and press ENTER");
 
-            Console.WriteLine("\n*** Named pipe server stream with impersonation example ***\n");
-            Console.WriteLine("Waiting for client connect...\n");
-            
-            for (i = 0; i < NumThreads; i++)
+            var pipeName = Console.ReadLine();
+            if (string.IsNullOrEmpty(pipeName))
             {
-                servers[i] = new Thread(ServerThread);
-                servers[i].Start();
+                pipeName = "ChipID";
+                Console.WriteLine($"Using default pipe name of \"{pipeName}\"");
             }
 
-            Thread.Sleep(250);
-            
-            while (i > 0)
-            {
-                for (int j = 0; j < NumThreads; j++)
-                {
-                    if (servers[j] != null)
-                    {
-                        if (servers[j].Join(250))
-                        {
-                            Console.WriteLine("Server thread[{0}] finished.", servers[j].ManagedThreadId);
-                            servers[j] = null;
-                            i--;    // decrement the thread watch count
-                        }
-                    }
-                }
-            }
-            
-            Console.WriteLine("\nServer threads exhausted, exiting.");
-        }
+            Console.WriteLine("Waiting for client to connect...");
 
-        private static void ServerThread(object data)
-        {
-            var pipeServer = new NamedPipeServerStream("testpipe", PipeDirection.InOut, NumThreads);
-
-            int threadId = Thread.CurrentThread.ManagedThreadId;
+            // Server can only receive input with this pipe, it's not duplex.
+            var pipeServer = new NamedPipeServerStream(pipeName, PipeDirection.In, 1);
 
             // Wait for a client to connect
             pipeServer.WaitForConnection();
 
-            Console.WriteLine("Client connected on thread[{0}].", threadId);
+            Console.WriteLine("Client connected\n");
             try
             {
-                // Read the request from the client. Once the client has written to the pipe its security token will be available.
+                // For reading data from the client.
                 var ss = new StreamString(pipeServer);
 
-                // Verify our identity to the connected client using a string that the client anticipates.
-                ss.WriteString("I am the one true server!");
+                while (true)
+                {
+                    var tagId = ss.ReadString();
 
-                string filename = ss.ReadString();
+                    // Empty string received from client is the trigger to close the connection.
+                    if (string.IsNullOrEmpty(tagId))
+                    {
+                        break;
+                    }
 
-                // Read in the contents of the file while impersonating the client.
-                var fileReader = new ReadFileToStream(ss, filename);
-
-                // Display the name of the user we are impersonating.
-                Console.WriteLine("Reading file: {0} on thread[{1}] as user: {2}.", filename, threadId, pipeServer.GetImpersonationUserName());
-                
-                pipeServer.RunAsClient(fileReader.Start);
+                    Console.WriteLine($"Received tag {tagId}");
+                }
             }
             catch (IOException e)
             {
-                // Catch the IOException that is raised if the pipe is broken or disconnected.
-                Console.WriteLine("ERROR: {0}", e.Message);
+                // Catch the exception that is raised if the pipe is broken or disconnected.
+                Console.WriteLine($"ERROR: {e.Message}");
             }
 
             pipeServer.Close();
+
+            // Keep the console open for a while.
+            Thread.Sleep(2000);
         }
     }
 }
